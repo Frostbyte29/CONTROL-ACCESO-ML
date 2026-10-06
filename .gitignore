@@ -1,0 +1,15 @@
+# Entorno virtual
+.venv/
+
+# Caché de Python
+__pycache__/
+*.pyc
+
+# Archivos temporales
+*.tmp
+
+# Base de datos local
+sistema_banos.db
+
+# Embeddings antiguos
+embeddings.pkl
