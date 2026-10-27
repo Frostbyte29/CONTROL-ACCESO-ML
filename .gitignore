@@ -13,3 +13,12 @@ sistema_banos.db
 
 # Embeddings antiguos
 embeddings.pkl
+rostros/
+data/
+*.db
+*.pt
+*.onnx
+
+.venv/
+__pycache__/
+.pytest_cache/
