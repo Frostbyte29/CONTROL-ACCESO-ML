@@ -38,6 +38,7 @@ class Captura:
         self._detener = threading.Event()
         self._terminado = False
         self._hilo: threading.Thread | None = None
+        self._t_inicio: float = 0.0
 
     @property
     def es_archivo(self) -> bool:
@@ -65,44 +66,69 @@ class Captura:
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._ancho)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._alto)
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-        t_inicio = time.monotonic()
+        self._t_inicio = time.monotonic()
         self._detener.clear()
         self._terminado = False
         self._hilo = threading.Thread(
             target=self._leer_hilo,
-            args=(cap, fps, t_inicio),
+            args=(cap, fps, self._t_inicio),
             daemon=True,
         )
         self._hilo.start()
 
+    def tiempo_actual(self) -> float:
+        """Tiempo transcurrido desde el inicio de la captura, en segundos."""
+        return time.monotonic() - self._t_inicio
+
     def _leer_hilo(self, cap: cv2.VideoCapture, fps: float, t_inicio: float) -> None:
         """Lee cuadros y los coloca en la cola hasta que la fuente se agote o se detenga."""
         indice = 0
-        while not self._detener.is_set():
-            ok, imagen = cap.read()
-            if not ok:
-                break
-            t = indice / fps if self.es_archivo else time.monotonic() - t_inicio
-            cuadro = Cuadro(imagen=imagen, t=t, indice=indice)
-            indice += 1
-            if self.es_archivo:
-                # Pone con timeout corto para que detener() funcione aunque la cola esté llena
-                while not self._detener.is_set():
-                    try:
-                        self._cola.put(cuadro, timeout=0.1)
-                        break
-                    except queue.Full:
-                        pass
-            else:
-                # Fuente en vivo: solo conserva el cuadro más reciente
-                while not self._cola.empty():
-                    try:
-                        self._cola.get_nowait()
-                    except queue.Empty:
-                        break
-                self._cola.put(cuadro)
-        cap.release()
-        self._terminado = True
+        try:
+            while not self._detener.is_set():
+                ok, imagen = cap.read()
+                if not ok:
+                    break
+                t = indice / fps if self.es_archivo else time.monotonic() - t_inicio
+                cuadro = Cuadro(imagen=imagen, t=t, indice=indice)
+                indice += 1
+                if self.es_archivo:
+                    # Pone con timeout corto para que detener() funcione aunque la cola esté llena
+                    while not self._detener.is_set():
+                        try:
+                            self._cola.put(cuadro, timeout=0.1)
+                            break
+                        except queue.Full:
+                            pass
+                else:
+                    # Fuente en vivo: solo conserva el cuadro más reciente
+                    while not self._cola.empty():
+                        try:
+                            self._cola.get_nowait()
+                        except queue.Empty:
+                            break
+                    self._cola.put(cuadro)
+        finally:
+            cap.release()
+            self._terminado = True
+
+    def reabrir(self) -> bool:
+        """Intenta reabrir la fuente en vivo reutilizando el mismo t_inicio."""
+        if self.es_archivo:
+            return False
+        cap = cv2.VideoCapture(self._fuente)
+        if not cap.isOpened():
+            cap.release()
+            return False
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        self._detener.clear()
+        self._terminado = False
+        self._hilo = threading.Thread(
+            target=self._leer_hilo,
+            args=(cap, fps, self._t_inicio),
+            daemon=True,
+        )
+        self._hilo.start()
+        return True
 
     def leer(self, timeout_s: float = 1.0) -> Cuadro | None:
         """Devuelve el siguiente cuadro o None si pasa timeout_s sin uno nuevo."""
