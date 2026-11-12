@@ -1,0 +1,61 @@
+# Configuración del sistema de control de acceso
+# Ajusta los valores marcados con [AJUSTAR] según tu instalación.
+
+# Fuente de video: "elegir" abre el selector de cámara;
+# también acepta un índice (0, 1...), una URL RTSP o una ruta de archivo.
+fuente: elegir
+
+ancho: 1280
+alto: 720
+
+# Banda de conteo: línea central (x1,y1)→(x2,y2) y ancho en píxeles.  [AJUSTAR]
+# La línea cruza de lado a lado; ancho define la zona de confirmación.
+banda:
+  x1: 0
+  y1: 360
+  x2: 1280
+  y2: 360
+  ancho: 60
+
+# true → el interior está al lado negativo de la normal (p.ej. la puerta da a la derecha)
+adentro_negativo: false  # [AJUSTAR]
+
+# Conteo (valores de referencia D-06)
+confirmar_cuadros: 3
+enfriamiento_s: 2.0
+perdido_s: 1.5
+
+# Detección de personas
+pesos: yolov8n.pt
+imgsz: 640
+confianza: 0.35
+
+# Modelos de rostro
+ruta_yunet: data/modelos/face_detection_yunet_2023mar.onnx
+ruta_sface: data/modelos/face_recognition_sface_2021dec.onnx
+confianza_rostro: 0.9
+lado_min_px: 40
+
+# Umbrales de identificación — valores de partida; calibrar con datos propios.
+# Referencia: el umbral coseno publicado para SFace es 0.363.
+umbral_alto: 0.45   # [AJUSTAR]
+umbral_bajo: 0.30   # [AJUSTAR]
+min_rostros: 3
+max_rostros: 10
+
+# Ventana de identificación por persona
+cada_n_cuadros: 3
+distancia_ventana_px: 150
+ventana_post_s: 1.0
+
+# Salud de la cámara
+brillo_min: 25
+variacion_min: 8
+segundos_tapada: 2.0
+latido_s: 10
+
+# Jornada
+precio_centimos: 150   # [AJUSTAR] en céntimos (ej. 150 = S/1.50)
+mostrar_monto: true
+
+ruta_db: data/control.db
